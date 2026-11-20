@@ -24,6 +24,7 @@ jobs:
           - userName: q215613905
             repoName: TVBoxOS
             branchName: main
+            java_ver: 17
     steps:
       - name: Checkout
         uses: actions/checkout@v4
