@@ -35,12 +35,25 @@ public class SSLSocketFactoryCompat extends SSLSocketFactory {
             SSLSocket socket = (SSLSocket) SSLSocketFactory.getDefault().createSocket();
             if (socket != null) {
                 /* set reasonable protocol versions */
-                // - enable all supported protocols (enables TLSv1.1 and TLSv1.2 on Android <5.0)
+                // - enable TLSv1.2 explicitly (the only one needed for HTTPS collection APIs)
+                // - TLSv1.2 is not enabled by default on Android <5.0, so we force it on
                 // - remove all SSL versions (especially SSLv3) because they're insecure now
                 List<String> protocols = new LinkedList<>();
-                for (String protocol : socket.getSupportedProtocols())
-                    if (!protocol.toUpperCase().contains("SSL"))
-                        protocols.add(protocol);
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
+                    // Android 4.x: force TLSv1.2 explicitly. The system SSLContext may still
+                    // default to TLSv1.0/SSLv3 which triggers "sslv3 alert handshake failure"
+                    // against modern HTTPS servers. Prefer TLSv1.2 when supported.
+                    if (Arrays.asList(socket.getSupportedProtocols()).contains("TLSv1.2"))
+                        protocols.add("TLSv1.2");
+                    else
+                        for (String protocol : socket.getSupportedProtocols())
+                            if (!protocol.toUpperCase().contains("SSL"))
+                                protocols.add(protocol);
+                } else {
+                    for (String protocol : socket.getSupportedProtocols())
+                        if (!protocol.toUpperCase().contains("SSL"))
+                            protocols.add(protocol);
+                }
                 SSLSocketFactoryCompat.protocols = protocols.toArray(new String[protocols.size()]);
                 /* set up reasonable cipher suites */
                 if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
@@ -53,7 +66,7 @@ public class SSLSocketFactoryCompat extends SSLSocketFactory {
                             "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256",
                             "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384",
                             "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256",
-                            "TLS_ECHDE_RSA_WITH_AES_128_GCM_SHA256",
+                            "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
                             // maximum interoperability
                             "TLS_RSA_WITH_3DES_EDE_CBC_SHA",
                             "TLS_RSA_WITH_AES_128_CBC_SHA",
