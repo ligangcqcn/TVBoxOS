@@ -96,13 +96,15 @@ jobs:
           distribution: temurin
           java-version: '17'
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-        with:
-          api-level: 29
-          ndk-version: r25c
-          emulator: false
-      - name: Generate local.properties
-        run: echo "sdk.dir=$ANDROID_HOME" > TVBoxOSC/local.properties
+        run: |
+          # ubuntu-latest runner ships a preinstalled Android SDK
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
+          ls $ANDROID_HOME/platforms 2>/dev/null | head
+          echo "sdk.dir=$ANDROID_HOME" > TVBoxOSC/local.properties
+          cat TVBoxOSC/local.properties
+          # accept licenses if needed (best-effort)
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses >/dev/null 2>&1 || true
       - uses: gradle/actions/setup-gradle@v4
         if: ${{ env.commit }}
         with:
