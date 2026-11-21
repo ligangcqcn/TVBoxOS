@@ -70,6 +70,9 @@ jobs:
           else
             sed -i "/jitpack.io/a\        maven { url 'https://o0halflife0o.github.io/crosswalk/releases/crosswalk/android/maven2' }" build.gradle
           fi
+          echo '修复 pyramid buildPython 为 CI 的 python3'
+          sed -i 's#buildPython(\"D:/Programs/Python/Python38/python.exe\")#buildPython(\"python3\")#' pyramid/build.gradle
+          which python3
       - name: Compress Source Code
         if: ${{ env.commit }}
         working-directory: TVBoxOSC
