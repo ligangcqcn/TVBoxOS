@@ -130,10 +130,10 @@ jobs:
         run: |
           rm -rf apk/
           mkdir -p apk/
-          for file in `find ~ -name "*java32Debug*.apk" -print`; do
+          for file in `find ~ -name "*debug*.apk" -print`; do
             base=$(basename "$file")
             if [[ "$base" == TVBox_* ]]; then
-              new_base=$(echo "$base" | sed "s/java32Debug/${{ matrix.userName }}_${{ env.tag }}/")
+              new_base=$(echo "$base" | sed "s/-debug/${{ matrix.userName }}_${{ env.tag }}/")
             else
               new_base="TVBox_${{ matrix.userName }}_${{ env.tag }}.apk"
             fi
