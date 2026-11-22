@@ -105,16 +105,33 @@ public class SSLSocketFactoryCompat extends SSLSocketFactory {
         }
     }
 
+    /**
+     * 只启用当前 socket 真正支持的协议/套件。
+     * 静态列表来自某个具体 SSL 实现（系统或 Conscrypt），直接赋值到另一种实现的 socket 上
+     * 会抛 IllegalArgumentException（如 Conscrypt 不支持 TLS_ECDH_RSA_WITH_3DES_EDE_CBC_SHA）。
+     */
     private void upgradeTLS(SSLSocket ssl) {
         // Android 5.0+ (API level21) provides reasonable default settings
         // but it still allows SSLv3
         // https://developer.android.com/about/versions/android-5.0-changes.html#ssl
         if (protocols != null) {
-            ssl.setEnabledProtocols(protocols);
+            String[] use = intersect(protocols, ssl.getSupportedProtocols());
+            if (use.length > 0) ssl.setEnabledProtocols(use);
         }
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP && cipherSuites != null) {
-            ssl.setEnabledCipherSuites(cipherSuites);
+            String[] use = intersect(cipherSuites, ssl.getSupportedCipherSuites());
+            if (use.length > 0) ssl.setEnabledCipherSuites(use);
         }
+    }
+
+    /** 保留 preferred 的顺序，只取 target 中也存在的项。 */
+    private static String[] intersect(String[] preferred, String[] target) {
+        List<String> targetList = Arrays.asList(target);
+        List<String> result = new LinkedList<>();
+        for (String item : preferred) {
+            if (targetList.contains(item)) result.add(item);
+        }
+        return result.toArray(new String[result.size()]);
     }
 
     @Override
