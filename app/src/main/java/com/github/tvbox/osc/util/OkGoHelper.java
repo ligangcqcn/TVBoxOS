@@ -46,10 +46,8 @@ import okhttp3.Cache;
 import okhttp3.Dns;
 import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
-import okhttp3.Interceptor;
 import okhttp3.dnsoverhttps.DnsOverHttps;
 import okhttp3.internal.Version;
-import org.chromium.net.CronetEngine;
 import xyz.doikki.videoplayer.exo.ExoMediaSourceHelper;
 
 
@@ -82,26 +80,16 @@ public class OkGoHelper {
         com.github.catvod.net.OkHttp.reset();
     }
 
-    // Cronet 接管 TLS，绕过 Android 4.4 系统 conscrypt 的签名算法限制
-    private static CronetEngine cronetEngine = null;
-    private static Interceptor cronetInterceptor = null;
-
-    private static synchronized Interceptor getCronetInterceptor() {
-        if (cronetInterceptor != null) return cronetInterceptor;
+    // Android 4.4 系统 TLS 栈只提供 SHA-1 系签名算法，现代服务端会拒绝握手。
+    // 用 Conscrypt 提供现代 BoringSSL 实现（TLS 1.2/1.3 + 现代签名算法），证书校验仍走应用内的信任全部策略。
+    static {
         try {
-            cronetEngine = new CronetEngine.Builder(App.getInstance()).build();
-            cronetInterceptor = com.google.net.cronet.okhttptransport.CronetInterceptor.newBuilder(cronetEngine).build();
-            android.util.Log.i("TVBox-runtime", "cronet interceptor ready: " + cronetEngine);
+            java.security.Security.insertProviderAt(org.conscrypt.Conscrypt.newProvider(), 1);
+            android.util.Log.i("TVBox-runtime", "conscrypt provider installed: " + org.conscrypt.Conscrypt.isAvailable());
         } catch (Throwable th) {
-            android.util.Log.e("TVBox-runtime", "cronet init failed: " + th);
+            android.util.Log.e("TVBox-runtime", "conscrypt init failed: " + th);
             th.printStackTrace();
         }
-        return cronetInterceptor;
-    }
-
-    private static void attachCronet(OkHttpClient.Builder builder) {
-        Interceptor interceptor = getCronetInterceptor();
-        if (interceptor != null) builder.addInterceptor(interceptor);
     }
 
     static void initExoOkHttpClient() {
@@ -363,8 +351,6 @@ public class OkGoHelper {
             th.printStackTrace();
         }
 
-        attachCronet(builder);
-
         HttpHeaders.setUserAgent(Version.userAgent());
 
         OkHttpClient okHttpClient = builder.build();
@@ -408,8 +394,6 @@ public class OkGoHelper {
         } catch (Throwable th) {
             th.printStackTrace();
         }
-
-        attachCronet(builder);
 
         HttpHeaders.setUserAgent(Version.userAgent());
 
